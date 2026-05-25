@@ -487,24 +487,25 @@ useGSAP(
             <div className="relative shrink-0" style={{ width: "400px", height: "100%" }}>
               {/* Card 1 — upper */}
               <div className="absolute" style={{ top: "25%", left: "40px", transform: "translateY(-50%)" }}>
-                <InfoCard
-                  tag="High-Performing Website"
-                  title="Modernising a group of sites for a marine services provider"
-                  description="Breaking key pages into modular components allowed us to build a shared design system."
-                  color="#a855f7"
-                  width={340}
-                />
-              </div>
-              {/* Card 2 — lower */}
-              <div className="absolute" style={{ top: "72%", left: "40px", transform: "translateY(-50%)" }}>
-                <InfoCard
-                  tag="High-Performing Website"
-                  title="Optimising conversion without compromising luxury"
-                  description="We redesigned user journeys across the site to make them smoother and more intuitive."
-                  color="#a855f7"
-                  width={340}
-                />
-              </div>
+  <InfoCard
+    tag="Internet Breaking Design"
+    title="Building websites that make people stop scrolling instantly"
+    description="Crazy visuals, smooth motion, and a vibe so clean it feels illegal."
+    color="#a855f7"
+    width={340}
+  />
+</div>
+
+{/* Card 2 — lower */}
+<div className="absolute" style={{ top: "72%", left: "40px", transform: "translateY(-50%)" }}>
+  <InfoCard
+    tag="Next-Level Experience"
+    title="Turning normal startup websites into cinematic experiences"
+    description="Less boring layouts. More energy, emotion, and ‘yo this is insane’ moments."
+    color="#a855f7"
+    width={340}
+  />
+</div>
             </div>
 
             {/* SVG connector — cards to desktop */}
@@ -573,12 +574,12 @@ useGSAP(
             {/* Third info card */}
             <div className="relative shrink-0 z-20 flex items-center" style={{ height: "100%" }}>
               <InfoCard
-                tag="UI / UX"
-                title="A bold new identity for a Shopify Platinum Partner"
-                description="The new website needed to reflect Roswell's bold, confident identity while letting their work take center stage."
-                color="#10b981"
-                width={340}
-              />
+  tag="UI / UX"
+  title="Designing websites that feel more like digital flexes"
+  description="Clean layouts, insane motion, and visuals that make startups look 10x bigger online."
+  color="#10b981"
+  width={340}
+/>
             </div>
 
             {/* SVG connector — card to Roswell phone */}
@@ -679,7 +680,7 @@ useGSAP(
                 className="text-[15px] tracking-tight font-[Inter_Tight,sans-serif]"
                 style={{ color: "rgba(255,255,255,0.4)" }}
               >
-                Keep them guessing
+                OFF/BEAT ~ STUDIOS
               </span>
               <h2
                 id="cta-heading"
