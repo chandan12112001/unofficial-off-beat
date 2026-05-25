@@ -34,7 +34,7 @@ export function useImagePreloader({
   const getFramePath = useCallback(
     (index: number): string => {
       const frameNumber = String(index + 1).padStart(5, "0");
-      return `${basePath}/${frameNumber}.png`;
+      return `${basePath}/${frameNumber}.webp`;
     },
     [basePath]
   );
