@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import HeroScene from './HeroScene';
 
@@ -97,8 +97,10 @@ function MagneticButton({ children, href, variant = 'outline' }: { children: Rea
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [mouseX, setMouseX] = useState(0);
   const [mouseY, setMouseY] = useState(0);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const { scrollY } = useScroll();
   const scrollProgress = useTransform(scrollY, [0, 800], [0, 1]);
   const springScrollProgress = useSpring(scrollProgress, { stiffness: 50, damping: 20 });
@@ -114,6 +116,29 @@ export default function HeroSection() {
     const unsub = springScrollProgress.on('change', v => setScrollVal(v));
     return unsub;
   }, [springScrollProgress]);
+
+  // Load & play video lazily after mount — avoids blocking initial page render
+  const startVideo = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.load();
+    const onCanPlay = () => {
+      video.play().catch(() => {/* autoplay blocked — fine, poster shows */});
+      setVideoLoaded(true);
+    };
+    video.addEventListener('canplay', onCanPlay, { once: true });
+  }, []);
+
+  useEffect(() => {
+    // Use requestIdleCallback when available for lowest priority, else rAF
+    if ('requestIdleCallback' in window) {
+      (window as Window & { requestIdleCallback: (cb: () => void, opts?: object) => void })
+        .requestIdleCallback(startVideo, { timeout: 2000 });
+    } else {
+      const raf = requestAnimationFrame(startVideo);
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [startVideo]);
 
   useEffect(() => {
     const handleMouse = (e: MouseEvent) => {
@@ -141,14 +166,27 @@ export default function HeroSection() {
         alignItems: 'center',
       }}
     >
-      {/* Background video */}
+      {/* Background video — lazy loaded to avoid blocking initial render */}
+      {/* Dark placeholder shown instantly while video fetches */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0,
+          background: '#080808',
+          transition: 'opacity 0.6s ease',
+          opacity: videoLoaded ? 0 : 1,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
       <video
-        autoPlay
+        ref={videoRef}
         muted
         loop
         playsInline
-        preload="auto"
-        className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none bg-black"
+        preload="none"
+        className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+        style={{ opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.6s ease', zIndex: 0 }}
       >
         <source src="/background-home.mp4" type="video/mp4" />
       </video>

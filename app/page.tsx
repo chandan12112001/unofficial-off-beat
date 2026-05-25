@@ -27,8 +27,8 @@ export default function App() {
   const { images, progress, isReady } = useImagePreloader({
     totalFrames: 300,
     basePath: "/scrolling-webapp",  // → public/sequence/00001.png–00300.png
-    batchSize: 20,
-    priorityFrames: 30,
+    batchSize: 30,
+    priorityFrames: 60,
   });
 
   return (
@@ -39,15 +39,19 @@ export default function App() {
       {/* Custom cursor (desktop only) */}
       {!isMobile && <CustomCursor />}
 
-      {/* Loader */}
+      {/* Loader — driven by real asset progress */}
       <AnimatePresence mode="wait">
         {loading && (
-          <Loader onComplete={() => setLoading(false)} />
+          <Loader
+            onComplete={() => setLoading(false)}
+            progress={progress}
+            isReady={isReady}
+          />
         )}
       </AnimatePresence>
 
-      {/* Main content */}
-      {!loading && (
+      {/* Main content — rendered early but hidden until loader exits so it hydrates in background */}
+      <div style={{ visibility: loading ? 'hidden' : 'visible', position: loading ? 'absolute' : 'relative', inset: 0 }}>
         <SmoothScroll>
           <div style={{ background: '#080808', overflowX: 'clip' }}>
             <Navigation />
@@ -65,7 +69,7 @@ export default function App() {
             <Footer />
           </div>
         </SmoothScroll>
-      )}
+      </div>
     </>
   );
 }

@@ -1,28 +1,58 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LoaderProps {
   onComplete: () => void;
+  /** Real load progress 0-100 from the asset preloader */
+  progress?: number;
+  /** True when enough assets have loaded to start the app */
+  isReady?: boolean;
 }
 
-export default function Loader({ onComplete }: LoaderProps) {
-  const [progress, setProgress] = useState(0);
+export default function Loader({ onComplete, progress: externalProgress, isReady }: LoaderProps) {
+  const [displayProgress, setDisplayProgress] = useState(0);
   const [visible, setVisible] = useState(true);
-  const [_phase, setPhase] = useState<'assembling' | 'complete'>('assembling');
+  const completedRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
+  const displayProgressRef = useRef(0); // mirror for rAF closures
 
+  // Track real preloader progress — drive the bar forward (never backwards)
   useEffect(() => {
-    const duration = 2200;
+    if (externalProgress === undefined) return;
+    const target = Math.floor(Math.max(externalProgress, 0));
+    setDisplayProgress(prev => {
+      const next = Math.max(prev, target);
+      displayProgressRef.current = next;
+      return next;
+    });
+  }, [externalProgress]);
+
+  // Fallback / completion path: once isReady fires, animate bar to 100%
+  // regardless of where `externalProgress` is stuck (fixes stuck-at-25% bug)
+  useEffect(() => {
+    if (!isReady || completedRef.current) return;
+
+    // Cancel any previous rAF
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    const startVal = displayProgressRef.current;
     const startTime = performance.now();
+    // Fill remaining distance in 600 ms
+    const duration = Math.max(300, (100 - startVal) * 6);
 
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const prog = Math.min((elapsed / duration) * 100, 100);
-      setProgress(Math.floor(prog));
+    const animateFill = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = Math.round(startVal + (100 - startVal) * eased);
+      displayProgressRef.current = val;
+      setDisplayProgress(val);
 
-      if (prog < 100) {
-        requestAnimationFrame(animate);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(animateFill);
       } else {
-        setPhase('complete');
+        // Bar is at 100% — dismiss after a brief hold
+        completedRef.current = true;
         setTimeout(() => {
           setVisible(false);
           setTimeout(onComplete, 800);
@@ -30,8 +60,35 @@ export default function Loader({ onComplete }: LoaderProps) {
       }
     };
 
-    requestAnimationFrame(animate);
-  }, [onComplete]);
+    rafRef.current = requestAnimationFrame(animateFill);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  // onComplete is stable; isReady is the trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady]);
+
+  // No-external-progress fallback: if nothing is passed, run the classic timer
+  useEffect(() => {
+    if (externalProgress !== undefined) return; // real data takes over
+    const duration = 2200;
+    const startTime = performance.now();
+    const animate = (now: number) => {
+      const prog = Math.min(((now - startTime) / duration) * 100, 100);
+      displayProgressRef.current = Math.floor(prog);
+      setDisplayProgress(Math.floor(prog));
+      if (prog < 100) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else if (!completedRef.current) {
+        completedRef.current = true;
+        setTimeout(() => {
+          setVisible(false);
+          setTimeout(onComplete, 800);
+        }, 400);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const letters = ['O', 'F', 'F', '/', 'B', 'E', 'A', 'T'];
 
@@ -116,8 +173,8 @@ export default function Loader({ onComplete }: LoaderProps) {
                   className="absolute left-0 top-0 h-full"
                   style={{
                     background: 'linear-gradient(90deg, #6378ff, #a78bfa)',
-                    width: `${progress}%`,
-                    transition: 'width 0.1s linear',
+                    width: `${displayProgress}%`,
+                    transition: 'width 0.15s linear',
                     boxShadow: '0 0 20px rgba(99,120,255,0.8)',
                   }}
                 />
@@ -126,10 +183,10 @@ export default function Loader({ onComplete }: LoaderProps) {
               {/* Progress number */}
               <div className="flex justify-between w-full">
                 <span style={{ fontSize: '10px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter Tight, sans-serif' }}>
-                  INITIALIZING
+                  {isReady ? 'READY' : 'LOADING ASSETS'}
                 </span>
                 <span style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter Tight, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
-                  {progress.toString().padStart(3, '0')}%
+                  {displayProgress.toString().padStart(3, '0')}%
                 </span>
               </div>
             </div>

@@ -27,9 +27,10 @@ export default function ScrollSequence({
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationLoopRef = useRef<number | null>(null);
   const lastRenderedFrame = useRef(-1);
+  const isVisibleRef = useRef(false);
   const windowSize = useDebouncedResize();
 
-  // ─── Canvas setup ─────────────────────────────────────────────────────────
+  //  Canvas setup 
   const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -59,7 +60,7 @@ export default function ScrollSequence({
     lastRenderedFrame.current = -1;
   }, []);
 
-  // ─── Render a single frame (cover-fit) ────────────────────────────────────
+  //  Render a single frame (cover-fit) 
   const renderFrame = useCallback(
     (frameIndex: number) => {
       const ctx = contextRef.current;
@@ -100,13 +101,19 @@ export default function ScrollSequence({
     [images, totalFrames]
   );
 
-  // ─── High-performance render loop (60 fps lerp) ───────────────────────────
+  //  High-performance render loop (60 fps lerp) 
   const startRenderLoop = useCallback(() => {
     // Higher factor = snappier response (feels like 60fps)
     const LERP = 0.14;
     const SNAP = 0.05;
 
     const loop = () => {
+      // Pause loop when section is not visible — saves GPU/CPU
+      if (!isVisibleRef.current) {
+        animationLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
       const target = targetFrameRef.current;
       const current = currentFrameRef.current;
       const diff = target - current;
@@ -132,23 +139,30 @@ export default function ScrollSequence({
     }
   }, []);
 
-  // ─── Init ─────────────────────────────────────────────────────────────────
+  //  Init ──
   useEffect(() => {
     setupCanvas();
   }, [setupCanvas]);
 
-  // ─── Handle resize ────────────────────────────────────────────────────────
+  //  Handle resize ──
   useEffect(() => {
     setupCanvas();
     renderFrame(Math.round(currentFrameRef.current));
   }, [windowSize, setupCanvas, renderFrame]);
 
-  // ─── ScrollTrigger ────────────────────────────────────────────────────────
+  //  ScrollTrigger ──
   useEffect(() => {
     if (!isReady || !containerRef.current || !canvasRef.current) return;
 
     renderFrame(0);
     startRenderLoop();
+
+    // Pause rAF when section is not in viewport — critical GPU saving
+    const observer = new IntersectionObserver(
+      ([entry]) => { isVisibleRef.current = entry.isIntersecting; },
+      { threshold: 0 }
+    );
+    if (containerRef.current) observer.observe(containerRef.current);
 
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
@@ -166,11 +180,12 @@ export default function ScrollSequence({
 
     return () => {
       stopRenderLoop();
+      observer.disconnect();
       ctx.revert();
     };
   }, [isReady, totalFrames, renderFrame, startRenderLoop, stopRenderLoop]);
 
-  // ─── Cleanup ──────────────────────────────────────────────────────────────
+  //  Cleanup ──
   useEffect(() => {
     return () => stopRenderLoop();
   }, [stopRenderLoop]);
